@@ -1,0 +1,40 @@
+{
+    "name": "backend_day1",
+    "version": "1.0.0",
+    "type": "module",
+    "description": "30 day backend",
+    "main": "server.js",
+    "scripts": {
+        "test": "node server",
+        "dev": "nodemon src/server.js"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/github.com/Irid3.git"
+    },
+    "keywords": [
+        "backend",
+        "30",
+        "days",
+        "code",
+        "30",
+        "days",
+        "backend",
+        "training"
+    ],
+    "author": "Saiful",
+    "license": "MIT",
+    "bugs": {
+        "url": "https://github.com/github.com/Irid3/issues"
+    },
+    "homepage": "https://github.com/github.com/Irid3#readme",
+    "dependencies": {
+        "axios": "^1.5.0",
+        "chalk": "^5.3.0",
+        "dotenv": "^16.3.1",
+        "express": "^4.18.2",
+        "mongoose": "^7.5.3",
+        "nanoid": "^3.3.6",
+        "pino": "^8.15.1"
+    }
+}
