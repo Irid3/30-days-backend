@@ -25,12 +25,19 @@ const startApp = () => {
         Logger.info(` Incoming Request -> Method: [${req.method}] - URL: [${req.url}] - IP: [${req.socket.remoteAddress}]`);
         res.on('finish', () => {
             Logger.info(
-                ` Incoming Request Finish -> Method: [${req.method}] - URL: [${req.url}] - IP: [${req.socket.remoteAddress}] - StatusCode: [${req.statusCode}] - Status: [${req.statusMessage}]`
+                ` Incoming Request Finish -> Method: [${req.method}] - URL: [${req.url}] - IP: [${req.socket.remoteAddress}] - StatusCode: [${res.statusCode}] - Status: [${res.statusMessage}]`
             );
         });
         next();
     });
     app.use(express.json());
+    app.use((req, res, next) => {
+        if (!req.route) {
+            res.status(404).json({ message: 'Not Found' });
+        } else {
+            next();
+        }
+    });
     app.use('/catalog', routers);
     app.get('/catalog/', (req, res) => {
         res.status(200).json({ message: 'Home' });

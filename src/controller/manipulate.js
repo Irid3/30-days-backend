@@ -1,9 +1,9 @@
 import { nanoid } from 'nanoid';
-import Logging from '../../lib/Logging.js';
-import SchemaOwner from '../schema/ownerSchema.js';
-import SchemaProduct from '../schema/productSchema.js';
-import SchemaCategory from '../schema/categorySchema.js';
-import isValid from '../isValid.js';
+import Logging from '../lib/Logging.js';
+import SchemaOwner from '../db/schema/ownerSchema.js';
+import SchemaProduct from '../db/schema/productSchema.js';
+import SchemaCategory from '../db/schema/categorySchema.js';
+import isValid from '../config/isValid.js';
 
 const Logger = new Logging();
 
@@ -12,6 +12,9 @@ const createOwner = async (req, res) => {
 
     let msg = isValid('owner', { name: name, email: email });
 
+    let dupe = (await SchemaOwner.findOne().where({ name: name, email: email })) || SchemaOwner.findOne().where({ email: email });
+
+    if (dupe) return res.status(400).json({ message: 'Data sudah ada di dalam database' });
     const owner = new SchemaOwner({
         id: nanoid(16),
         name: name,
@@ -68,7 +71,7 @@ const createCategory = async (req, res) => {
         id: nanoid(24),
         title: title,
         description: description,
-        ownerId: ownerId
+        ownerId: ownerId ? ownerId : null
     });
 
     return msg.length > 0
@@ -84,6 +87,21 @@ const createCategory = async (req, res) => {
 
 const getAllOwner = async (req, res) => {
     return await SchemaOwner.find()
+        .select({ name: true, email: true })
+        .lean()
+        .then((a) => (a.length > 0 ? res.status(200).json({ owner: a }) : res.status(200).json({ owner: a })))
+        .catch((err) => res.status(500).json({ message: 'Kesalahan disisi server' }));
+};
+const getAllProduct = async (req, res) => {
+    return await SchemaProduct.find()
+        .select({ title: true, description: true, price: true })
+        .lean()
+        .then((a) => (a.length > 0 ? res.status(200).json({ product: a }) : res.status(200).json({ owner: a })))
+        .catch((err) => res.status(500).json({ message: 'Kesalahan disisi server' }));
+};
+const getAllCategory = async (req, res) => {
+    return await SchemaCategory.find()
+        .select({ title: true, description: true })
         .lean()
         .then((a) => (a.length > 0 ? res.status(200).json({ owner: a }) : res.status(200).json({ owner: a })))
         .catch((err) => res.status(500).json({ message: 'Kesalahan disisi server' }));
@@ -95,14 +113,14 @@ const getOwnerById = async (req, res) => {
 
     let owner = await SchemaOwner.findOne().where({ id: id }).select({ name: true, email: true });
 
-    try {
-        let product = await SchemaProduct.findById({ ownerId: id });
-        let category = await SchemaCategory.findById({ ownerId: id });
+    let product = await SchemaProduct.findOne().where({ ownerId: id }).select({ title: true, description: true, price: true });
+    let category = await SchemaCategory.findOne().where({ ownerId: id }).select({ title: true, description: true });
 
-        owner['product'] = product ? { id: product.id, title: product.title, description: product.description, price: product.price, category: category ? category.title : '' } : {};
-    } catch (e) {
-        Logger.error('product atau category belum ada');
-    }
+    if (product)
+        owner._doc['product'] = product
+            ? { id: product.id, title: product.title, description: product.description, price: product.price, category: category ? { title: category.title, description: category.description } : {} }
+            : {};
+
     return msg.length > 0 ? res.status(400).json(msg) : owner ? res.status(200).json(owner) : res.status(200).json({ message: 'Not Found' });
 };
 const getProductById = async (req, res) => {
@@ -135,28 +153,21 @@ const getCategoryById = async (req, res) => {
 
     let msg = isValid('id', id);
 
-    let category = await SchemaCategory.findOne()
-        .where({ id: id })
-        .select({ title: true, description: true, ownerId: true })
-        .then((c) => {
-            c ? { c } : res.status(404).json({ message: 'Not Found' });
-        })
-        .catch((err) => {
-            Logger.error(`Error while parsing : \n${err}`);
-            res.status(500).json({ message: 'Kesalahan disisi server' });
-        });
+    let category = await SchemaCategory.findOne().where({ id: id }).select({ title: true, description: true, ownerId: true });
+    let owner = await SchemaOwner.findOne().where({ id: category.ownerId }).select({ name: true, email: true });
+    let product = await SchemaProduct.findOne().where({ ownerId: category.ownerId }).select({ title: true, description: true, price: true });
+    owner ? (category._doc['owner'] = { name: owner.name, email: owner.email }) : {};
+    product ? (product._doc['product'] = { title: product.title, description: product.description, price: product.price }) : {};
 
     try {
-        let owner = await SchemaOwner.findOne().where({ id: category.ownerId }).select({ name: true, email: true });
-        category['owner'] = owner ? owner : {};
-    } catch {
-        Logger.error('OwnerId tidak ditemukan');
-    }
-    try {
-        let product = await SchemaProduct.findOne().where({ ownerId: category.ownerId }).select({ title: true, description: true, price: true });
-        category['product'] = product ? product : {};
-    } catch {
-        Logger.error('ProductId belum di isi/ tidak ditemukan');
+        delete product._doc._id;
+        delete category._doc._id;
+        delete owner._doc._id;
+        delete product._doc.categoryId;
+        delete product._doc.ownerId;
+        delete category._doc.ownerId;
+    } catch (err) {
+        Logger.error('Error delete di getCategoryById');
     }
 
     return msg.length > 0 ? res.status(400).json(msg) : category ? res.status(200).json(category) : res.status(200).json({ message: 'Not Found' });
@@ -166,13 +177,11 @@ const getById = async (req, res) => {
     const id = req.params.id;
 
     let owner = await SchemaOwner.findOne().where({ id: id }).select({ name: true, email: true });
-    let product = await SchemaProduct.findOne().where({ id: id }).select({ name: true, description: true, price: true });
+    let product = await SchemaProduct.findOne().where({ id: id }).select({ title: true, description: true, price: true });
     let category = await SchemaCategory.findOne().where({ id: id }).select({ title: true, description: true, ownerId: true });
-    if (owner) delete owner._id;
-    if (product) delete product._id;
-    if (category) delete category._id;
-    delete owner._id;
-    console.log(owner);
+    if (owner) delete owner._doc._id;
+    if (product) delete product._doc._id;
+    if (category) delete category._doc._id;
     return owner ? res.status(200).json(owner) : product ? res.status(200).json(product) : category ? res.status(200).json(category) : res.status(404).json({ message: 'Not Found' });
 };
 
@@ -182,7 +191,7 @@ const updateOwnerById = async (req, res) => {
     let msg = isValid('owner', req.body);
     let owner = await SchemaOwner.findOne().where({ id: id });
     let props = {};
-    Object.entries(owner).forEach(([k, v]) => {
+    Object.entries(owner._doc).forEach(([k, v]) => {
         if (v !== undefined) {
             props[k] = v;
         } else {
@@ -201,6 +210,10 @@ const updateProductById = async (req, res) => {
     let msg = isValid('product', req.body);
     let product = await SchemaProduct.findOne().where({ id: id });
     let props = {};
+    let check_rel = (await SchemaProduct.find().where({ ownerId: prop.ownerId })) || (await SchemaProduct.find().where({ categoryId: prop.categoryId }));
+
+    if (check_rel.length > 1) res.status(400).json({ message: 'Realtionship antara product ke owner atau product ke category terbatas 1' });
+
     Object.entries(product._doc).forEach(([k, v]) => {
         if (prop[k] === undefined || prop[k] === null) {
             props[k] = v;
@@ -219,7 +232,10 @@ const updateCategoryById = async (req, res) => {
     let msg = isValid('category', req.body);
     let category = await SchemaCategory.findOne().where({ id: id });
     let props = {};
-    Object.entries(category).forEach(([k, v]) => {
+    let check_rel = (await SchemaCategory.find().where({ ownerId: prop.ownerId })) || (await SchemaCategory.find().where({ categoryId: prop.categoryId }));
+
+    if (check_rel.length > 1) res.status(400).json({ message: 'Realtionship antara category ke owner terbatas 1' });
+    Object.entries(category._doc).forEach(([k, v]) => {
         if (v === undefined) {
             props[k] = v;
         } else {
@@ -272,5 +288,7 @@ export default {
     updateProductById,
     deleteOwner,
     deleteCategory,
-    deleteProduct
+    deleteProduct,
+    getAllProduct,
+    getAllCategory
 };

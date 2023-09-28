@@ -1,5 +1,5 @@
 import express from 'express';
-import manipulate from '../config/crud/manipulate.js';
+import manipulate from '../controller/manipulate.js';
 
 const router = express.Router();
 
@@ -8,6 +8,8 @@ router.get('/owner/:id', manipulate.getOwnerById);
 router.get('/category/:id', manipulate.getCategoryById);
 router.get('/product/:id', manipulate.getProductById);
 router.get('/gets/:id', manipulate.getById);
+router.get('/product', manipulate.getAllProduct);
+router.get('/category', manipulate.getAllCategory);
 router.post('/owner/', manipulate.createOwner);
 router.post('/product/', manipulate.createProduct);
 router.post('/category/', manipulate.createCategory);
