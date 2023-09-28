@@ -16,10 +16,10 @@ export default isValid = (who, any) => {
     }
     if (who === 'product') {
         Object.entries(any).forEach(([k, v], i) => {
-            if (v === undefined) msg.push(`Parameter ${k} masih kosong. Mohon isi ${k} terlebih dahulu!`);
+            if (v === undefined && (k === 'categoryId' || k === 'ownerId')) msg.push(`Parameter ${k} masih kosong. Mohon isi ${k} terlebih dahulu!`);
             if (k === 'price' && typeof v !== 'number') msg.push(`Type data PRICE yang kamu masukkan salah. Mohon isi PRICE dengan tipe data NUMBER`);
         });
-        MessageChannel.map((e, i) => (msgs[`error_${i + 1}`] = e));
+        msg.map((e, i) => (msgs[`error_${i + 1}`] = e));
     }
     return msgs;
 };

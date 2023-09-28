@@ -11,3 +11,9 @@
 - [ ] Logging crud to file dan Logging request to file (optional).
 - [ ] Implementasi Routes.
 - [ ] Error Handling.
+
+
+==Hari ini Tanggal 27 September 2023. Progress Dari Project ini adalah :== 
+- [x] Kurang Read, Update, Delete.
+- [x] Implementasi Routes.
+

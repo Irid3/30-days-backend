@@ -8,7 +8,6 @@ import routers from './routes/index.js';
 const Logger = new Logging();
 dotenv.config();
 const app = express();
-console.log(serv.mongo.url);
 mongoose
     .connect(serv.mongo.url, { w: 'majority', retryWrites: true })
     .then(() => {
